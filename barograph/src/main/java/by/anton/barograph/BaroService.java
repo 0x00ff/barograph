@@ -5,36 +5,60 @@ import android.app.IntentService;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.util.Log;
 
-/**
- * Created by Антонио on 19.03.14.
- */
-public class BaroService extends IntentService {
+public class BaroService extends IntentService implements SensorEventListener{
     private static final String NAME = "BaroService";
-    private static final int POLL_INTERVAL = 1000 * 60 * 20; // 20 минут
-    /**
-     * Creates an IntentService.  Invoked by your subclass's constructor.
-     */
+    private static final int POLL_INTERVAL = 1000 * 5/*60 * 20*/; // 20 минут
+    private SensorManager sensorManager;
+    private Sensor pressure;
+
+
     public BaroService() {
         super(NAME);
     }
 
-    @Override
-    protected void onHandleIntent(Intent intent) {
-        Log.i(NAME, "Handling intent:" + intent);
+
+    public static void setServiceAlarm(Context context){
+        AlarmManager alarmManager = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+        PendingIntent pendingIntent = CreateIntent(context);
+        alarmManager.setRepeating(AlarmManager.RTC, System.currentTimeMillis(), POLL_INTERVAL, pendingIntent);
     }
 
-    public static void setServiceAlarm(Context context, boolean isOn){
-        Intent intent = new Intent(context, BaroService.class);
-        PendingIntent pendingIntent = PendingIntent.getService(context, 0, intent, 0);
+    public static void cancelServiceAlarm(Context context){
         AlarmManager alarmManager = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+        PendingIntent pendingIntent = CreateIntent(context);
+        alarmManager.cancel(pendingIntent);
+        pendingIntent.cancel();
+    }
 
-        if (isOn){
-            alarmManager.setRepeating(AlarmManager.RTC, System.currentTimeMillis(), POLL_INTERVAL, pendingIntent);
-        } else {
-            alarmManager.cancel(pendingIntent);
-            pendingIntent.cancel();
-        }
+    private static PendingIntent CreateIntent(Context context) {
+        return PendingIntent.getService(context, 0, new Intent(context, BaroService.class), 0);
+    }
+
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        pressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+
+        if (pressure == null) { return; }
+
+        sensorManager.registerListener(this, pressure, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        sensorManager.unregisterListener(this, pressure);
+
+        Log.i(NAME, "[" + event.timestamp + "] pressure is " + event.values[0] + " (" + event.accuracy + ")");
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Does not matter for now
     }
 }

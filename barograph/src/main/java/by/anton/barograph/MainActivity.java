@@ -2,6 +2,7 @@ package by.anton.barograph;
 
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -12,8 +13,18 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Log.i("Baro", "Starting service");
+        BaroService.setServiceAlarm(this);
     }
 
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.i("Baro", "Stopping service");
+        BaroService.cancelServiceAlarm(this);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
